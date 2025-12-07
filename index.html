@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ダンス動画アーカイブ</title>
+  <style>
+    body { font-family: system-ui, -apple-system; padding: 12px; }
+    h1 { color: #333; }
+    .item { margin-bottom: 1.2em; }
+    .item a { color: #0066cc; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <h1>ダンス動画リスト</h1>
+  <div id="list">読み込み中…</div>
+
+  <script>
+    const spreadsheetId = "146jgD_E3TsojE1rDQnwVuQrZJ0qKS_7nPm3hA-Iv3-M";  // ←ここにあなたのID
+    const eventsSheet = "Events";
+    const songsSheet = "Songs";
+
+    // Sheets データを取得する関数
+    async function fetchSheet(sheetName) {
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${sheetName}`;
+      const res = await fetch(url);
+      const text = await res.text();
+      const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1));
+      return json.table.rows.map(r => r.c.map(c => c ? c.v : ""));
+    }
+
+    async function loadAndRender() {
+      const [eventsData, songsData] = await Promise.all([
+        fetchSheet(eventsSheet),
+        fetchSheet(songsSheet),
+      ]);
+
+      const headerE = eventsData.shift();
+      const headerS = songsData.shift();
+
+      const events = eventsData.map(r => {
+        const obj = {};
+        headerE.forEach((h,i) => obj[h] = r[i]);
+        return obj;
+      });
+      const songs = songsData.map(r => {
+        const obj = {};
+        headerS.forEach((h,i) => obj[h] = r[i];
+        return obj;
+      });
+
+      const container = document.getElementById("list");
+      container.innerHTML = "";
+
+      events.forEach(ev => {
+        const div = document.createElement("div");
+        div.className = "item";
+        div.innerHTML = `<strong>${ev.event_name} (${ev.date}) - ${ev.place}</strong>`;
+        const ul = document.createElement("ul");
+        songs.filter(s => s.event_id == ev.id).forEach(s => {
+          const li = document.createElement("li");
+          const a = document.createElement("a");
+          a.href = s.video_url;
+          a.target = "_blank";
+          a.innerText = s.song_name;
+          li.appendChild(a);
+          ul.appendChild(li);
+        });
+        div.appendChild(ul);
+        container.appendChild(div);
+      });
+    }
+
+    loadAndRender().catch(err => {
+      console.error(err);
+      document.getElementById("list").innerText = "読み込みに失敗しました";
+    });
+  </script>
+</body>
+</html>
